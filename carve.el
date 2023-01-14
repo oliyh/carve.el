@@ -35,23 +35,33 @@
 
 (defun carve ()
   (let ((buf (get-buffer-create "*carve-output*"))
-        (dir default-directory))
+        (inhibit-read-only t))
     (with-current-buffer buf
       (erase-buffer)
-      (setq default-directory dir)
-      (start-file-process "carve" buf carve-command "--opts" "'{:paths [\"src\" \"test\"] :report {:format :text}}'"))))
+      ;; (read-only-mode t)
+      (select-window (display-buffer buf))
+      (let ((process (start-file-process "carve" buf carve-command "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}")))
+        (while (accept-process-output process)))
+      (goto-char (point-min))
+)))
+
+;; doesn't work
+;; (global-set-key (kbd "C-c C-c") 'carve)
+
+;; (carve)
+
 
 ;; todo
-;; - make the command run properly
+;; - erase-buffer doesn't work
 ;; - check for existence of .carve config in project, and use that?
-;; - set carve path to current file
-
-;; - make the buffer with the results pop open
-;; - make the result buffer read-only
+;; - set carve path to current file if it's clj/c/s (or clojure mode is on?)
 
 ;; - commands could be carve-current-file, carve-project
+;; - keyboard shortcuts, example at least
 
+;; - in result buffer, pressing enter visits the file / line / char
 ;; - in result buffer, could have a key which will delete the form it refers to?
+
 
 ;; (carve)
 ;;; carve.el ends here
