@@ -33,6 +33,27 @@
   :type 'string
   :group 'carve)
 
+(defun kill-carve-buffer ()
+  (interactive)
+  (kill-buffer))
+
+(defvar carve-mode-map nil
+  "Keymap for `carve-mode'.")
+
+(unless carve-mode-map
+  (setq carve-mode-map (make-sparse-keymap))
+  (define-key carve-mode-map "q" 'kill-carve-buffer)
+  (define-key carve-mode-map "Enter" 'carve-mode-visit))
+
+(defun carve-mode ()
+  "Major mode for viewing carve output.
+\\{carve-mode-map}"
+  (interactive)
+  (kill-all-local-variables)
+  (setq major-mode 'carve-mode
+        mode-name "Carve output")
+  (use-local-map carve-mode-map))
+
 (defun carve ()
   (let ((buf (get-buffer-create "*carve-output*"))
         (inhibit-read-only t)
@@ -43,6 +64,7 @@
       (setq default-directory dir)
       (setq buffer-read-only t)
       (select-window (display-buffer buf))
+      (carve-mode)
       (start-file-process "date" buf "date")
       (let ((process (start-file-process "carve" buf carve-command "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}")))
         (while (accept-process-output process)))
