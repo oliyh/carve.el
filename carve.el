@@ -24,6 +24,8 @@
 ;; Command to run carve
 
 ;;; Code:
+(require 'projectile)
+
 (defgroup carve nil
   "Settings for carve"
   :group 'tools)
@@ -55,17 +57,23 @@
   (use-local-map carve-mode-map))
 
 (defun carve ()
-  (let ((buf (get-buffer-create "*carve-output*"))
-        (inhibit-read-only t)
-        (dir (file-name-directory buffer-file-name)))
+  (let* ((buf (get-buffer-create "*carve-output*"))
+         (inhibit-read-only t)
+         (current-file-directory (file-name-directory buffer-file-name))
+         (project-root (projectile-project-root))
+         (has-config (file-exists-p (concat project-root ".carve/config.edn")))
+         (carve-opts (if has-config
+                         (list "--opts")
+                       (list "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}"))))
     (with-current-buffer buf
       (erase-buffer)
       (grep-mode) ;; enables file linking, q for quit
-      (setq default-directory dir) ;; run carve process in correct directory
+      (setq default-directory project-root) ;; run carve process in correct directory
       (select-window (display-buffer buf))
       ;; todo make this a minor mode if need it back
-;;      (carve-mode)
-      (let ((process (start-file-process "carve" buf carve-command "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}")))
+      ;;      (carve-mode)
+      (print (concat  "Running: " (string-join (cons carve-command carve-opts) " ")))
+      (let ((process (apply 'start-file-process "carve" buf carve-command carve-opts)))
         (while (accept-process-output process)))
       (goto-char (point-min)))))
 
@@ -74,13 +82,13 @@
 ;; (carve)
 
 ;; todo
-;; - check for existence of .carve config in project, and use that?
 ;; - check for existence of src / test and use them if present
 ;; - find project root to execute from (projectile? or something else?)
 ;; - carve-current-file: set carve path to current file
 
 ;; - commands could be carve-current-file, carve-project
 ;; - keyboard shortcuts, example at least
+;; - key to add line to ignore file
 
 ;; - in result buffer, could have a key which will delete the form it refers to?
 
