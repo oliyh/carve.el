@@ -50,7 +50,7 @@
 \\{carve-mode-map}"
   (interactive)
   (kill-all-local-variables)
-  (setq major-mode 'carve-mode
+  (setq minor-mode 'carve-mode
         mode-name "Carve output")
   (use-local-map carve-mode-map))
 
@@ -60,16 +60,14 @@
         (dir (file-name-directory buffer-file-name)))
     (with-current-buffer buf
       (erase-buffer)
-      (fundamental-mode)
-      (setq default-directory dir)
-      (setq buffer-read-only t)
+      (grep-mode) ;; enables file linking, q for quit
+      (setq default-directory dir) ;; run carve process in correct directory
       (select-window (display-buffer buf))
-      (carve-mode)
-      (start-file-process "date" buf "date")
+      ;; todo make this a minor mode if need it back
+;;      (carve-mode)
       (let ((process (start-file-process "carve" buf carve-command "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}")))
         (while (accept-process-output process)))
       (goto-char (point-min)))))
-
 
 (global-set-key (kbd "C-c c") (lambda () (interactive) (carve)))
 
@@ -77,12 +75,13 @@
 
 ;; todo
 ;; - check for existence of .carve config in project, and use that?
-;; - set carve path to current file if it's clj/c/s (or clojure mode is on?)
+;; - check for existence of src / test and use them if present
+;; - find project root to execute from (projectile? or something else?)
+;; - carve-current-file: set carve path to current file
 
 ;; - commands could be carve-current-file, carve-project
 ;; - keyboard shortcuts, example at least
 
-;; - in result buffer, pressing enter visits the file / line / char
 ;; - in result buffer, could have a key which will delete the form it refers to?
 
 
