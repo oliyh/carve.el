@@ -35,24 +35,25 @@
 
 (defun carve ()
   (let ((buf (get-buffer-create "*carve-output*"))
-        (inhibit-read-only t))
+        (inhibit-read-only t)
+        (dir (file-name-directory buffer-file-name)))
     (with-current-buffer buf
       (erase-buffer)
-      ;; (read-only-mode t)
+      (fundamental-mode)
+      (setq default-directory dir)
+      (setq buffer-read-only t)
       (select-window (display-buffer buf))
+      (start-file-process "date" buf "date")
       (let ((process (start-file-process "carve" buf carve-command "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}")))
         (while (accept-process-output process)))
-      (goto-char (point-min))
-)))
+      (goto-char (point-min)))))
 
-;; doesn't work
-;; (global-set-key (kbd "C-c C-c") 'carve)
+
+(global-set-key (kbd "C-c c") (lambda () (interactive) (carve)))
 
 ;; (carve)
 
-
 ;; todo
-;; - erase-buffer doesn't work
 ;; - check for existence of .carve config in project, and use that?
 ;; - set carve path to current file if it's clj/c/s (or clojure mode is on?)
 
