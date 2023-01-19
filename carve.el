@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Command to run carve
+;; https://github.com/oliyh/carve.el
 
 ;;; Code:
 (require 'projectile)
@@ -56,15 +56,10 @@
         mode-name "Carve output")
   (use-local-map carve-mode-map))
 
-(defun carve ()
-  (let* ((buf (get-buffer-create "*carve-output*"))
-         (inhibit-read-only t)
-         (current-file-directory (file-name-directory buffer-file-name))
-         (project-root (projectile-project-root))
-         (has-config (file-exists-p (concat project-root ".carve/config.edn")))
-         (carve-opts (if has-config
-                         (list "--opts")
-                       (list "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}"))))
+(defun run-carve (project-root carve-opts)
+  (let ((buf (get-buffer-create "*carve-output*"))
+        (inhibit-read-only t)
+        (command (string-join (cons carve-command carve-opts) " ")))
     (with-current-buffer buf
       (erase-buffer)
       (grep-mode) ;; enables file linking, q for quit
@@ -72,26 +67,43 @@
       (select-window (display-buffer buf))
       ;; todo make this a minor mode if need it back
       ;;      (carve-mode)
-      (print (concat  "Running: " (string-join (cons carve-command carve-opts) " ")))
+      (print (concat "Running: " command))
+      (goto-char (point-min))
+      (insert command)
+      (insert "\n\n")
       (let ((process (apply 'start-file-process "carve" buf carve-command carve-opts)))
         (while (accept-process-output process)))
-      (goto-char (point-min)))))
+      (goto-char (point-min))
+      (forward-line 2))))
 
-(global-set-key (kbd "C-c c") (lambda () (interactive) (carve)))
+(defun carve-project ()
+  (interactive)
+  (let* ((current-file-directory (file-name-directory buffer-file-name))
+         (project-root (projectile-project-root))
+         (has-config (file-exists-p (concat project-root ".carve/config.edn")))
+         (carve-opts (if has-config
+                         (list "--opts")
+                       (list "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}"))))
+    (run-carve project-root carve-opts)))
+
+(defun carve-ns ()
+  (interactive)
+  (let* ((project-root (projectile-project-root))
+         (project-file-path (file-relative-name buffer-file-name project-root))
+         (carve-opts (list "--opts" (concat "{:paths [\"" project-file-path "\"] :report {:format :text}}"))))
+    (run-carve project-root carve-opts)))
+
+(global-set-key (kbd "C-c C-c p") 'carve-project)
+(global-set-key (kbd "C-c C-c n") 'carve-ns)
 
 ;; (carve)
 
 ;; todo
 ;; - check for existence of src / test and use them if present
-;; - find project root to execute from (projectile? or something else?)
-;; - carve-current-file: set carve path to current file
 
-;; - commands could be carve-current-file, carve-project
 ;; - keyboard shortcuts, example at least
 ;; - key to add line to ignore file
 
 ;; - in result buffer, could have a key which will delete the form it refers to?
 
-
-;; (carve)
 ;;; carve.el ends here
