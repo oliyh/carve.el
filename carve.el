@@ -56,13 +56,27 @@
         mode-name "Carve output")
   (use-local-map carve-mode-map))
 
+(defun walk-output ()
+  (interactive)
+  (let (prop-alist)
+    (goto-char (point-min))
+    (forward-line 2)
+    (while (looking-at "\\([^ ]+\\) \\(.+\\)$")
+      (let ((file-path (match-string 1))
+	    (carved-symbol (match-string 2)))
+        (add-text-properties (line-beginning-position) (line-end-position) (list 'carve-symbol carved-symbol))
+	(when (assoc carved-symbol prop-alist)
+	  (error "Duplicated property %s" carved-symbol))
+	(setq prop-alist (cons (cons file-path carved-symbol) prop-alist)))
+      (forward-line 1))
+    prop-alist))
+
 (defun run-carve (project-root carve-opts)
   (let ((buf (get-buffer-create "*carve-output*"))
         (inhibit-read-only t)
         (command (string-join (cons carve-command carve-opts) " ")))
     (with-current-buffer buf
       (erase-buffer)
-      (grep-mode) ;; enables file linking, q for quit
       (setq default-directory project-root) ;; run carve process in correct directory
       (select-window (display-buffer buf))
       ;; todo make this a minor mode if need it back
@@ -73,6 +87,9 @@
       (insert "\n\n")
       (let ((process (apply 'start-file-process "carve" buf carve-command carve-opts)))
         (while (accept-process-output process)))
+
+      (walk-output)
+      (grep-mode) ;; enables file linking, q for quit
       (goto-char (point-min))
       (forward-line 2))))
 
