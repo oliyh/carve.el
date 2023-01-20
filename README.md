@@ -1,6 +1,9 @@
 # carve.el
 
-emacs integration with borkdude/carve
+emacs integration with [borkdude/carve](https://github.com/borkdude/carve)
+
+It lets you run carve with a simple key binding and opens a result buffer where you can navigate to the
+results and add them to your ignore file with a single keystroke.
 
 ## Installation
 
