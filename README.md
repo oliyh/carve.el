@@ -4,7 +4,13 @@ emacs integration with borkdude/carve
 
 ## Installation
 
-Copy to your elpa directory and then `(require carve)` from you `init.el`.
+There is a dependency on `projectile` which you will need to have installed.
+
+Download `carve.el` and load it in your emacs `init.el`:
+
+```elisp
+(load "~/path/to/carve.el")
+```
 
 ## Usage
 
