@@ -35,28 +35,54 @@
   :type 'string
   :group 'carve)
 
-(defun kill-carve-buffer ()
+(defun carve--kill-buffer ()
   (interactive)
   (kill-buffer))
+
+(defun carve--add-to-ignore ()
+  (interactive)
+  (unless (get-text-property (point) 'carve-ignored)
+    (let* ((carve-symbol (get-text-property (point) 'carve-symbol))
+           (project-root (projectile-project-root))
+           (carve-directory (concat project-root ".carve/"))
+           (carve-ignore-file (concat carve-directory "ignore"))
+           (inhibit-read-only t))
+      (print (concat "Adding " carve-symbol " to " carve-ignore-file))
+      (add-text-properties (line-beginning-position) (line-end-position) (list 'font-lock-face (cons 'foreground-color "darkgray")
+                                                                               'carve-ignored t))
+      (unless (file-exists-p carve-directory)
+        (make-directory carve-directory))
+      (let ((buf (find-file-noselect carve-ignore-file)))
+        (with-current-buffer buf
+          (goto-char (point-max))
+          (insert "\n")
+          (insert carve-symbol)
+          (save-buffer))))))
+
+(defun carve--re-run-last-command ()
+  (interactive)
+  (let ((project-root (get-text-property (point-min) 'project-root))
+        (carve-opts (get-text-property (point-min) 'carve-opts)))
+    (carve--run-carve project-root carve-opts)))
 
 (defvar carve-mode-map nil
   "Keymap for `carve-mode'.")
 
 (unless carve-mode-map
   (setq carve-mode-map (make-sparse-keymap))
-  (define-key carve-mode-map "q" 'kill-carve-buffer)
-  (define-key carve-mode-map "Enter" 'carve-mode-visit))
+  (define-key carve-mode-map "q" 'carve--kill-buffer)
+  (define-key carve-mode-map "i" 'carve--add-to-ignore)
+  (define-key carve-mode-map "g" 'carve--re-run-last-command))
 
 (defun carve-mode ()
-  "Major mode for viewing carve output.
+  "Minor mode for viewing carve output.
 \\{carve-mode-map}"
   (interactive)
-  (kill-all-local-variables)
   (setq minor-mode 'carve-mode
-        mode-name "Carve output")
+        mode-name "Carve")
   (use-local-map carve-mode-map))
 
-(defun walk-output ()
+(defun carve--walk-output ()
   (interactive)
   (let (prop-alist)
     (goto-char (point-min))
@@ -71,7 +97,7 @@
       (forward-line 1))
     prop-alist))
 
-(defun run-carve (project-root carve-opts)
+(defun carve--run-carve (project-root carve-opts)
   (let ((buf (get-buffer-create "*carve-output*"))
         (inhibit-read-only t)
         (command (string-join (cons carve-command carve-opts) " ")))
@@ -79,17 +105,22 @@
       (erase-buffer)
       (setq default-directory project-root) ;; run carve process in correct directory
       (select-window (display-buffer buf))
-      ;; todo make this a minor mode if need it back
-      ;;      (carve-mode)
       (print (concat "Running: " command))
+
+      ;; put command that was run on the first line
       (goto-char (point-min))
       (insert command)
+      (add-text-properties (line-beginning-position) (line-end-position) (list 'project-root project-root
+                                                                               'carve-opts carve-opts))
       (insert "\n\n")
       (let ((process (apply 'start-file-process "carve" buf carve-command carve-opts)))
         (while (accept-process-output process)))
 
-      (walk-output)
+      (carve--walk-output)
       (grep-mode) ;; enables file linking, q for quit
+      (carve-mode) ;; for custom actions
+
+      ;; leave cursor on first entry
       (goto-char (point-min))
       (forward-line 2))))
 
@@ -101,26 +132,20 @@
          (carve-opts (if has-config
                          (list "--opts")
                        (list "--opts" "{:paths [\"src\" \"test\"] :report {:format :text}}"))))
-    (run-carve project-root carve-opts)))
+    (carve--run-carve project-root carve-opts)))
 
 (defun carve-ns ()
   (interactive)
   (let* ((project-root (projectile-project-root))
          (project-file-path (file-relative-name buffer-file-name project-root))
          (carve-opts (list "--opts" (concat "{:paths [\"" project-file-path "\"] :report {:format :text}}"))))
-    (run-carve project-root carve-opts)))
+    (carve--run-carve project-root carve-opts)))
 
 (global-set-key (kbd "C-c C-c p") 'carve-project)
 (global-set-key (kbd "C-c C-c n") 'carve-ns)
 
-;; (carve)
-
 ;; todo
 ;; - check for existence of src / test and use them if present
-
-;; - keyboard shortcuts, example at least
-;; - key to add line to ignore file
-
-;; - in result buffer, could have a key which will delete the form it refers to?
+;; - key which will delete the form it refers to?
 
 ;;; carve.el ends here
