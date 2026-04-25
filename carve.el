@@ -170,4 +170,7 @@ Uses `carve-project-backend' to determine which backend to use."
 ;; - check for existence of src / test and use them if present
 ;; - key which will delete the form it refers to?
 
+
+(provide 'carve)
+
 ;;; carve.el ends here
