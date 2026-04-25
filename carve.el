@@ -24,7 +24,7 @@
 ;; https://github.com/oliyh/carve.el
 
 ;;; Code:
-(require 'projectile)
+(require 'project)
 
 (defgroup carve nil
   "Settings for carve"
@@ -35,6 +35,28 @@
   :type 'string
   :group 'carve)
 
+(defcustom carve-project-backend nil
+  "Which project backend to use.
+If nil, use `projectile' if available, falling back to `project'.
+If `project', use Emacs built-in `project.el'.
+If `projectile', use `projectile'."
+  :type '(choice (const :tag "Auto-detect" nil)
+                 (const :tag "project.el" project)
+                 (const :tag "projectile" projectile))
+  :group 'carve)
+
+(defun carve--project-root ()
+  "Return the project root directory as a string.
+Uses `carve-project-backend' to determine which backend to use."
+  (let ((backend (or carve-project-backend
+                     (if (featurep 'projectile) 'projectile 'project))))
+    (pcase backend
+      ('projectile
+       (require 'projectile)
+       (projectile-project-root))
+      ('project
+       (expand-file-name (project-root (project-current t)))))))
+
 (defun carve--kill-buffer ()
   (interactive)
   (kill-buffer))
@@ -43,7 +65,7 @@
   (interactive)
   (unless (get-text-property (point) 'carve-ignored)
     (let* ((carve-symbol (get-text-property (point) 'carve-symbol))
-           (project-root (projectile-project-root))
+           (project-root (carve--project-root))
            (carve-directory (concat project-root ".carve/"))
            (carve-ignore-file (concat carve-directory "ignore"))
            (inhibit-read-only t))
@@ -127,7 +149,7 @@
 (defun carve-project ()
   (interactive)
   (let* ((current-file-directory (file-name-directory buffer-file-name))
-         (project-root (projectile-project-root))
+         (project-root (carve--project-root))
          (has-config (file-exists-p (concat project-root ".carve/config.edn")))
          (carve-opts (if has-config
                          (list "--opts")
@@ -136,7 +158,7 @@
 
 (defun carve-ns ()
   (interactive)
-  (let* ((project-root (projectile-project-root))
+  (let* ((project-root (carve--project-root))
          (project-file-path (file-relative-name buffer-file-name project-root))
          (carve-opts (list "--opts" (concat "{:paths [\"" project-file-path "\"] :report {:format :text}}"))))
     (carve--run-carve project-root carve-opts)))
