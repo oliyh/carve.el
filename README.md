@@ -7,7 +7,9 @@ results and add them to your ignore file with a single keystroke.
 
 ## Installation
 
-There is a dependency on `projectile` which you will need to have installed.
+For project detection, `carve.el` defaults to `projectile` if available,
+falling back to Emacs's built-in `project.el`. To force using `project.el`,
+even if projectile is installed, set `carve-project-backend` to `'project`.
 
 Download `carve.el` and load it in your emacs `init.el`:
 
